@@ -7,30 +7,82 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { TrendingUp, Users, DollarSign, Activity } from "lucide-react"
 
+interface Insight {
+  id: string
+  title: string
+  description: string
+  impact: string
+  confidence: number
+}
+
+interface AnalysisResult {
+  summary: string
+  recommendations: string[]
+  predictedRevenue: number
+  riskFactors: string[]
+}
+
 export default function DashboardPage() {
-  const [greeting, setGreeting] = useState<string>("")
+  const [insights, setInsights] = useState<Insight[]>([])
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
   const [loading, setLoading] = useState(false)
+  const [analyzing, setAnalyzing] = useState(false)
   const [error, setError] = useState<string>("")
 
-  const fetchGreeting = async () => {
+  const fetchInsights = async () => {
     setLoading(true)
     setError("")
-    setGreeting("")
+    setInsights([])
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "https://your-render-backend-url"
-      const response = await fetch(`${apiUrl}/api/greet`)
+      const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001"
+      const response = await fetch(`${apiUrl}/api/insights`)
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
 
       const data = await response.json()
-      setGreeting(data.message || JSON.stringify(data))
+      setInsights(data.insights || [])
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch greeting")
+      setError(err instanceof Error ? err.message : "Failed to fetch insights")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const analyzeSalesData = async () => {
+    setAnalyzing(true)
+    setError("")
+    setAnalysisResult(null)
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001"
+      const response = await fetch(`${apiUrl}/api/analyze`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          salesData: [
+            { month: "Jan", revenue: 45000 },
+            { month: "Feb", revenue: 52000 },
+            { month: "Mar", revenue: 48000 },
+          ],
+          period: "Q1 2024",
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      setAnalysisResult(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to analyze data")
+    } finally {
+      setAnalyzing(false)
     }
   }
 
@@ -92,40 +144,106 @@ export default function DashboardPage() {
             </Card>
           </div>
 
-          {/* API Test Section */}
-          <Card className="mt-8">
-            <CardHeader>
-              <CardTitle>Backend API Connection</CardTitle>
-              <CardDescription>Test the connection to your Render backend API</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Button onClick={fetchGreeting} disabled={loading}>
-                {loading ? (
-                  <>
-                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    Loading...
-                  </>
-                ) : (
-                  "Fetch Greeting from API"
+          <div className="mt-8 grid gap-6 lg:grid-cols-2">
+            {/* AI Insights Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>AI-Powered Insights</CardTitle>
+                <CardDescription>Get intelligent recommendations from your backend API</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Button onClick={fetchInsights} disabled={loading} className="w-full">
+                  {loading ? (
+                    <>
+                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      Loading Insights...
+                    </>
+                  ) : (
+                    "Fetch AI Insights"
+                  )}
+                </Button>
+
+                {insights.length > 0 && (
+                  <div className="space-y-3">
+                    {insights.map((insight) => (
+                      <div key={insight.id} className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-sm">{insight.title}</h4>
+                            <p className="mt-1 text-xs text-muted-foreground">{insight.description}</p>
+                            <p className="mt-2 text-xs font-medium text-primary">{insight.impact}</p>
+                          </div>
+                          <span className="ml-2 rounded-full bg-primary/10 px-2 py-1 text-xs font-medium">
+                            {Math.round(insight.confidence * 100)}%
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
-              </Button>
+              </CardContent>
+            </Card>
 
-              {greeting && (
-                <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-                  <p className="font-mono text-sm text-foreground">{greeting}</p>
-                </div>
-              )}
+            {/* Sales Analysis Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Sales Data Analysis</CardTitle>
+                <CardDescription>Analyze your sales performance with AI</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Button onClick={analyzeSalesData} disabled={analyzing} className="w-full">
+                  {analyzing ? (
+                    <>
+                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    "Analyze Sales Data"
+                  )}
+                </Button>
 
-              {error && (
+                {analysisResult && (
+                  <div className="space-y-3">
+                    <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                      <h4 className="font-semibold text-sm">Summary</h4>
+                      <p className="mt-1 text-xs text-muted-foreground">{analysisResult.summary}</p>
+                    </div>
+
+                    <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                      <h4 className="font-semibold text-sm">Predicted Revenue</h4>
+                      <p className="mt-1 text-2xl font-bold">${analysisResult.predictedRevenue.toLocaleString()}</p>
+                    </div>
+
+                    {analysisResult.recommendations.length > 0 && (
+                      <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                        <h4 className="font-semibold text-sm mb-2">Recommendations</h4>
+                        <ul className="space-y-1">
+                          {analysisResult.recommendations.map((rec, i) => (
+                            <li key={i} className="text-xs text-muted-foreground">
+                              • {rec}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {error && (
+            <Card className="mt-6 border-destructive/20">
+              <CardContent className="pt-6">
                 <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4">
-                  <p className="text-sm text-destructive">Error: {error}</p>
+                  <p className="text-sm text-destructive font-semibold">Error: {error}</p>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    Make sure to set NEXT_PUBLIC_API_BASE_URL in your environment variables
+                    Make sure your backend is running on port 3001 and NEXT_PUBLIC_API_BASE_URL is set correctly
                   </p>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Recent Activity */}
           <Card className="mt-8">
